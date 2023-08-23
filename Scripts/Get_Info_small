@@ -1,0 +1,53 @@
+# Step 1: Get host information
+$hostInfo = Get-WmiObject Win32_ComputerSystem
+$hostName = $hostInfo.Name
+$hostDomain = $hostInfo.Domain
+
+# Step 2: Get host network information
+$networkInfo = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -eq $true }
+$ipAddress = $networkInfo.IPAddress
+$macAddress = $networkInfo.MACAddress
+
+# Step 3: Get installed EDR/Antivirus vendor
+$antivirus = Get-WmiObject -Namespace "root\SecurityCenter2" -Class AntiVirusProduct
+$antivirusVendor = $antivirus.DisplayName
+
+# Step 4: Check local users and groups
+$localUsers = Get-WmiObject Win32_UserAccount | Select-Object Name, Domain, SID
+$localGroups = Get-WmiObject Win32_Group | Select-Object Name, Domain, SID
+
+# Convert local users and groups to formatted strings
+$localUsersFormatted = $localUsers | ForEach-Object { "Name: $($_.Name)`tDomain: $($_.Domain)`tSID: $($_.SID)" }
+$localGroupsFormatted = $localGroups | ForEach-Object { "Name: $($_.Name)`tDomain: $($_.Domain)`tSID: $($_.SID)" }
+
+# Combine all information into the report
+$report = @"
+Host Information:
+Host Name: $hostName
+Host Domain: $hostDomain
+
+Network Information:
+IP Address: $ipAddress
+MAC Address: $macAddress
+
+Installed Antivirus/EDR Vendor:
+Antivirus Vendor: $antivirusVendor
+
+Local Users:
+$($localUsersFormatted -join "`n")
+
+Local Groups:
+$($localGroupsFormatted -join "`n")
+"@
+
+# Print the report
+Write-Output $report
+
+# Optionally, you can save the report to a file
+# $report | Out-File -FilePath "C:\Path\To\Report.txt"
+
+# Step 5: Delete event logs
+#Get-WinEvent -LogName * | ForEach-Object { Clear-WinEvent -LogName $_.LogName }
+
+# Step 6: Clear PowerShell history logs
+#Clear-History
